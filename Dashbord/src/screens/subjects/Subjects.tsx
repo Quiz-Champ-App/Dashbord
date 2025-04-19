@@ -1,6 +1,6 @@
 import { Button } from "@mui/material";
 import "./style.scss";
-import { BookOpen, DeleteIcon, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import Popup from "../../components/popup/Popup";
 import TextInput from "../../components/input/TextInput";
 import DropDown from "../../components/input/DropDown";
@@ -10,6 +10,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useFormik } from "formik";
 import Loading from "../../components/loading/Loading";
 import Alart from "../../components/alart/Alart";
+import { useNavigate } from "react-router-dom";
+import ScreenHeader from "../../components/header/screen/ScreenHeader";
 
 interface SubjectCreateValues {
   subject_name_si: string;
@@ -19,10 +21,12 @@ interface SubjectCreateValues {
 
 const Subjects = () => {
   const { AxiosRequest } = useAxios();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const [handleOpen, setHandleOpen] = useState<boolean>(false);
   const [handleDeleteOpen, setHandleDeleteOpen] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [subjectId, setSubjectId] = useState<number>(0);
 
   const availableColors = [
@@ -36,18 +40,33 @@ const Subjects = () => {
     "subject-art",
   ];
 
-  const handlePopupOpen = () => {
-    setHandleOpen(true);
-  };
-  const handlePopupOpenEdit = () => {
-    setHandleOpen(true);
-  };
+  const formik = useFormik<SubjectCreateValues>({
+    initialValues: {
+      subject_name_si: "",
+      subject_name_en: "",
+      subject_type: "",
+    },
+    onSubmit: async (values) => {
+      console.log("Submitting form:", values);
+      try {
+        if (isEditing) {
+          await editSubjectMutate.mutateAsync({
+            id: subjectId,
+            data: values,
+          });
+        } else {
+          await mutateAsync(values);
+        }
+        console.log("Form submitted successfully:", values);
+        formik.resetForm();
+        setIsEditing(false);
+      } catch (error) {
+        console.error("Error during form submission:", error);
+      }
+    },
+  });
 
-  const handlePopupClose = () => {
-    setHandleOpen(false);
-  };
-
-  //add a new subject
+  // create a new subject
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (values: SubjectCreateValues) => {
       const finalVal = {
@@ -63,37 +82,16 @@ const Subjects = () => {
       console.log("Response from subject creation:", response);
       return response.data;
     },
-
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fetch-subject-data"] });
       handlePopupClose();
     },
-
     onError: (error: string) => {
       console.log("Subject creation error:", error);
     },
   });
 
-  const { handleSubmit, handleChange, values, errors, touched, resetForm } =
-    useFormik<SubjectCreateValues>({
-      initialValues: {
-        subject_name_si: "",
-        subject_name_en: "",
-        subject_type: "",
-      },
-
-      onSubmit: async (values) => {
-        console.log("Submitting form:", values);
-        try {
-          await mutateAsync(values);
-          console.log("Form submitted successfully:", values);
-          resetForm();
-        } catch (error) {
-          console.error("Error during form submission:", error);
-        }
-      },
-    });
-// get subject data
+  // get all subjects
   const { data: subjectsData = [], isFetching } = useQuery({
     queryKey: ["fetch-subject-data"],
     queryFn: async () => {
@@ -105,28 +103,16 @@ const Subjects = () => {
     },
   });
 
-  const { data: subjectsDataById, isLoading } = useQuery({
-    queryKey: ["fetch-subject-data"],
-    queryFn: async (id) => {
-      const response = await AxiosRequest({
-        url: `/subject/${id}`,
-        method: "GET",
-      });
-    
-      return response.data;
-     
-    },
-  });
-
-  
-  
-  // delete subject
-  const openDeletePopup = (id:number) => {
-    setHandleDeleteOpen(true);
-    setSubjectId(id);
+  // Get subject by ID
+  const fetchSubjectById = async (id: number) => {
+    const response = await AxiosRequest({
+      url: `/subject/${id}`,
+      method: "GET",
+    });
+    return response.data;
   };
 
-  
+  // delete subject
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const response = await AxiosRequest({
@@ -144,10 +130,68 @@ const Subjects = () => {
     },
   });
 
-  const isDeletePending = deleteMutation.isPending;
+  // edit subject
+  const editSubjectMutate = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: SubjectCreateValues;
+    }) => {
+      const response = await AxiosRequest({
+        url: `/subject/${id}`,
+        method: "PATCH",
+        data: data,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fetch-subject-data"] });
+      handlePopupClose();
+    },
+    onError: (error: string) => {
+      console.error("Error updating subject:", error);
+    },
+  });
 
-  const handleDelete = (id: number) => {
-    deleteMutation.mutate(id);
+  const handlePopupOpen = () => {
+    setIsEditing(false);
+    formik.resetForm();
+    setHandleOpen(true);
+  };
+
+  const handlePopupOpenEdit = async (id: number) => {
+    try {
+      setIsEditing(true);
+      setSubjectId(id);
+      const subjectData = await fetchSubjectById(id);
+
+      formik.setValues({
+        subject_name_si: subjectData.subject_name_si || "",
+        subject_name_en: subjectData.subject_name_en || "",
+        subject_type: subjectData.subject_type || "",
+      });
+
+      setHandleOpen(true);
+    } catch (error) {
+      console.error("Error fetching subject for edit:", error);
+    }
+  };
+
+  const handlePopupClose = () => {
+    setHandleOpen(false);
+    setIsEditing(false);
+    formik.resetForm();
+  };
+
+  const openDeletePopup = (id: number) => {
+    setHandleDeleteOpen(true);
+    setSubjectId(id);
+  };
+
+  const handleDelete = () => {
+    deleteMutation.mutate(subjectId);
   };
 
   // get a consistent color for a subject
@@ -156,64 +200,65 @@ const Subjects = () => {
     return availableColors[colorIndex];
   };
 
+  const isDeletePending = deleteMutation.isPending;
+  const isEditPending = editSubjectMutate.isPending;
 
-  //edit subject
-  const editSubjectMutate = useMutation({
-    mutationFn: async (id: number) => {
-      const response = await AxiosRequest({
-        url: `/subject/${id}`,
-        method: "PUT",
-      });
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["fetch-subject-data"] });
-    },
-    onError: (error: string) => {
-      console.error("Error deleting subject:", error);
-    },
-  });
-
-  const handleEdit = (id: number) => {
-    editSubjectMutate.mutate(id);
+  const navigateToSubject = (id: number, event: React.MouseEvent) => {
+    // Only navigate if the click was on the card itself, not on the action buttons
+    if (!(event.target as Element).closest(".subject-icon-wrapper")) {
+      navigate(`/subject/${id}`);
+    }
   };
 
   return (
     <div id="subjects_container">
-      {(isPending || isDeletePending) && <Loading />}
-      {isFetching && <Loading />}
-
+      {(isPending || isDeletePending || isEditPending || isFetching) && (
+        <Loading />
+      )}
+      <ScreenHeader
+        btn={
+          <Button
+            variant="contained"
+            color="primary"
+            className="add-subject-btn"
+            onClick={handlePopupOpen}
+            startIcon={<Plus />}
+          >
+            Add Subject
+          </Button>
+        }
+      />
       <div className="popup-wrapper">
         <Popup
-          title="Add Subject"
+          title={isEditing ? "Edit Subject" : "Add Subject"}
           isOpen={handleOpen}
           handleClose={handlePopupClose}
-          onClick={handleSubmit}
+          onClick={formik.handleSubmit}
           content={
             <>
               <TextInput
                 name="subject_name_si"
-                onChange={handleChange}
-                value={values.subject_name_si}
+                onChange={formik.handleChange}
+                value={formik.values.subject_name_si}
                 label="Subject Name Sinhala"
-                touched={touched.subject_name_si}
-                error={errors.subject_name_si}
+                touched={formik.touched.subject_name_si}
+                error={formik.errors.subject_name_si}
               />
               <TextInput
                 name="subject_name_en"
-                onChange={handleChange}
-                value={values.subject_name_en}
+                onChange={formik.handleChange}
+                value={formik.values.subject_name_en}
                 label="Subject Name English"
-                touched={touched.subject_name_en}
-                error={errors.subject_name_en}
+                touched={formik.touched.subject_name_en}
+                error={formik.errors.subject_name_en}
               />
               <DropDown
                 name="subject_type"
-                onChange={handleChange}
-                value={values.subject_type}
+                onChange={formik.handleChange}
+                value={formik.values.subject_type}
                 label="Subject Type"
-                touched={touched.subject_type}
-                error={errors.subject_type}
+                touched={formik.touched.subject_type}
+                error={formik.errors.subject_type}
                 helperText="Select the type of subject"
                 options={[
                   { value: "main", label: "main" },
@@ -225,73 +270,33 @@ const Subjects = () => {
             </>
           }
         />
-        <Popup
-          title="Edit Subject"
-          isOpen={handleOpen}
-          handleClose={handlePopupClose}
-          onClick={handleSubmit}
-          content={
-            <>
-              <TextInput
-                name="subject_name_si"
-                onChange={handleChange}
-                value={subjectsDataById?.subject_name_si}
-                label="Subject Name Sinhala"
-                touched={touched.subject_name_si}
-                error={errors.subject_name_si}
-              />
-              <TextInput
-                name="subject_name_en"
-                onChange={handleChange}
-                value={subjectsDataById?.subject_name_en}
-                label="Subject Name English"
-                touched={touched.subject_name_en}
-                error={errors.subject_name_en}
-              />
-              <DropDown
-                name="subject_type"
-                onChange={handleChange}
-                value={subjectsDataById?.subject_type}
-                label="Subject Type"
-                touched={touched.subject_type}
-                error={errors.subject_type}
-                helperText="Select the type of subject"
-                options={[
-                  { value: "main", label: "main" },
-                  { value: "bucket_one", label: "Bucket 1" },
-                  { value: "bucket_two", label: "Bucket 2" },
-                  { value: "bucket_three", label: "Bucket 3" },
-                ]}
-              />
-            </>
-          }
-        />
+
         <Alart
           title="Are you sure to delete?"
           open={handleDeleteOpen}
           handleClose={() => setHandleDeleteOpen(false)}
-          handleConfirm={()=>handleDelete(subjectId)}
+          handleConfirm={handleDelete}
         />
       </div>
+
       <div id="subjects">
-        <Button
-          variant="contained"
-          color="secondary"
-          className="add-subject-btn"
-          onClick={handlePopupOpen}
-          startIcon={<Plus />}
-        >
-          Add Subject
-        </Button>
         <div className="subjects-grid">
           {subjectsData.map((subject, index) => {
             const color = getSubjectColor(index);
 
             return (
-              <div key={index} className={`subject-card ${color}`}>
+              <div
+                key={index}
+                className={`subject-card ${color}`}
+                onClick={(event) =>
+                  navigateToSubject(subject.subject_id, event)
+                }
+              >
                 <div className="subject-icon-wrapper">
-                  <Trash2 onClick={() => openDeletePopup(subject?.subject_id)} />
-                  <Pencil onClick={()=>handlePopupOpenEdit()}/>
+                  <Trash2 onClick={() => openDeletePopup(subject.subject_id)} />
+                  <Pencil
+                    onClick={() => handlePopupOpenEdit(subject.subject_id)}
+                  />
                 </div>
 
                 <div className="subject-icon">

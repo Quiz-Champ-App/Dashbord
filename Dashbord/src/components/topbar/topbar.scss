@@ -1,0 +1,14 @@
+$sidebar-bg-color: #1a237e;
+
+#top-bar{
+    position: 'absolute';
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px;
+    height: 60px;
+    background-color: $sidebar-bg-color;
+  
+   
+}

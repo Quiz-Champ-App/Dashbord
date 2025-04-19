@@ -1,0 +1,24 @@
+#screen-header{
+    position: 'absolute';
+    width: 90%;
+    top: 50rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 20px;
+    height: 60px;
+    background-color: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+    .back-arrow{
+        font-size: 2rem;
+        color: #000000;
+        cursor: pointer;
+        transition: color 0.3s ease;
+
+        &:hover {
+            color: #1a237e;
+        }
+    }
+}

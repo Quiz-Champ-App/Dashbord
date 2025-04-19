@@ -2,15 +2,16 @@ import { TextField } from "@mui/material";
 
 
 interface TextInputProps {
-    value?: string;
+    value?: string | number;
     onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
     label?: string;
     touched?: boolean;
-    error?: boolean;
+    error?: boolean | string;
     name?: string;
+    type?: string;
 }
 
-const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,error}) => {
+const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,error,type}) => {
 
     return (
         <div id="text-input">
@@ -22,6 +23,7 @@ const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,e
         value={value}
         onChange={onChange}
         variant="outlined"
+        type={type}
       />
         {touched && error && (
             <div className="error-message">{error}</div>

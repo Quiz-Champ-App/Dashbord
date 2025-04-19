@@ -1,0 +1,53 @@
+#screen_container {
+  
+    $sidebar-bg-color: #1a237e;
+  
+    .select-grade-wrapper {
+    position: absolute;
+    display: flex;
+    gap:1rem;
+    align-items: center;
+    justify-content: center;
+left: 0;
+    right: 0;
+    bottom: 0;
+    top: 5rem;
+    z-index: 100;
+
+    .grade-card {
+      position: relative;
+      display: flex;
+     
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem;
+      width: 18rem;
+      border-radius: 0.75rem;
+      color: white;
+        background-color: $sidebar-bg-color;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+
+      &:hover {
+        transform: translateY(-5px) scale(1.03);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .grade-card-content{
+     
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+
+        h1{
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+        }
+      }
+    }
+  }
+}
