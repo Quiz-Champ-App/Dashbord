@@ -1,0 +1,49 @@
+#popup {
+  position: absolute;
+  width: 25rem;
+  height: 30rem;
+  
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem;
+  border-radius: 8px;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  // border: red solid 1px;
+ .popup-close{
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    cursor: pointer;
+    font-size: 1.5rem;
+    color: #ff0000;
+    transition: color 0.3s ease;
+ 
+
+    &:hover {
+      color: #ff0000; // Change to your desired hover color
+    }
+  
+
+  .popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .popup-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+ }
+  .popup-content {
+   display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    gap: 0.5rem;
+  }
+}

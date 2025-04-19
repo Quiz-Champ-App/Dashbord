@@ -1,0 +1,137 @@
+// Variables
+$sidebar-width: 240px;
+$sidebar-bg-color: #1a237e;
+$sidebar-text-color: #ffffff;
+$sidebar-active-item-border: 4px solid $sidebar-text-color;
+$sidebar-hover-bg: rgba(255, 255, 255, 0.1);
+$sidebar-active-bg: rgba(255, 255, 255, 0.2);
+$sidebar-divider-color: rgba(255, 255, 255, 0.1);
+$box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+
+// Mixins
+@mixin flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@mixin transition($property: all, $duration: 0.3s, $timing: ease) {
+  transition: $property $duration $timing;
+}
+
+// Sidebar Styles
+.sidebar {
+  width: $sidebar-width;
+  height: 100vh;
+  background-color: $sidebar-bg-color;
+  color: $sidebar-text-color;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  box-shadow: $box-shadow;
+  z-index: 100;
+  
+  &-header {
+    padding: 20px 0;
+    border-bottom: 1px solid $sidebar-divider-color;
+    
+    .logo-container {
+      @include flex-center;
+      padding: 10px 0;
+      
+      .logo {
+        max-width: 70%;
+        height: auto;
+      }
+    }
+  }
+  
+  &-menu {
+    display: flex;
+    flex-direction: column;
+    padding: 20px 0;
+  }
+  
+  &-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    cursor: pointer;
+    @include transition(background-color);
+    
+    &:hover {
+      background-color: $sidebar-hover-bg;
+    }
+    
+    &.active {
+      background-color: $sidebar-active-bg;
+      border-left: $sidebar-active-item-border;
+    }
+    
+    .sidebar-icon-container {
+      margin-right: 15px;
+      
+      .sidebar-icon {
+        font-size: 18px;
+      }
+    }
+    
+    .sidebar-text {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+  }
+}
+
+// Media query for responsive design
+@media screen and (max-width: 768px) {
+  .sidebar {
+    width: 70px;
+    overflow: hidden;
+    
+    &-header {
+      .logo-container {
+        .logo {
+          max-width: 90%;
+        }
+      }
+    }
+    
+    &-item {
+      padding: 15px 0;
+      justify-content: center;
+      
+      .sidebar-text {
+        display: none;
+      }
+      
+      .sidebar-icon-container {
+        margin-right: 0;
+        
+        .sidebar-icon {
+          font-size: 22px;
+        }
+      }
+    }
+  }
+  
+  // Adjust the main content spacing when sidebar is collapsed
+  .main-content {
+    margin-left: 70px !important;
+  }
+}
+
+// Parent component styles (you can put these in a separate file)
+.app-container {
+  display: flex;
+}
+
+.main-content {
+  margin-left: $sidebar-width;
+  padding: 20px;
+  width: 100%;
+  @include transition(margin-left);
+}
