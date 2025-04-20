@@ -1,4 +1,4 @@
-import ScreenHeader from '../../components/header/screen/ScreenHeader';
+import ScreenHeader from '../../../components/header/screen/ScreenHeader';
 import './select_grade.scss'
 import { useNavigate } from 'react-router-dom';
 import { useParams } from 'react-router-dom';

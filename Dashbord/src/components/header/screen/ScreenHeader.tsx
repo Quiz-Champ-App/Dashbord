@@ -11,7 +11,7 @@ interface ScreenHeaderProps {
 const ScreenHeader: React.FC<ScreenHeaderProps> = ({
   title,
   onBack,
-  onClick,
+
   btn,
 }) => {
   return (

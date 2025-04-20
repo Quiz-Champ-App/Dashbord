@@ -1,6 +1,5 @@
 import SecondaryBtn from "../../components/buttons/SecondaryBtn";
 import ScreenHeader from "../../components/header/screen/ScreenHeader";
-import { useNavigate } from "react-router-dom";
 import Popup from "../../components/popup/Popup";
 import TextInput from "../../components/input/TextInput";
 import { useParams } from "react-router-dom";
@@ -12,27 +11,32 @@ import { useState } from "react";
 import Loading from "../../components/loading/Loading";
 import Card from "../../components/card/Card";
 import Alart from "../../components/alart/Alart";
+import { useNavigate } from "react-router-dom";
 import "./level.scss";
+
+interface LevelCreateValues {
+  level: number;
+  subject_id: number;
+  grade_id: number;
+  unlock_points: number;
+  passing_marks: number;
+  time_limit: number;
+}
+
+
 
 const Levels = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { grade } = useParams();
   const { AxiosRequest } = useAxios();
+ 
   const queryClient = useQueryClient();
   const [handleOpen, setHandleOpen] = useState<boolean>(false);
   const [handleDeleteOpen, setHandleDeleteOpen] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [level, setLevel] = useState<number>(0);
-
-  interface LevelCreateValues {
-    level: number;
-    subject_id: number;
-    grade_id: number;
-    unlock_points: number;
-    passing_marks: number;
-    time_limit: number;
-  }
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const formik = useFormik<LevelCreateValues>({
     initialValues: {
@@ -47,10 +51,12 @@ const Levels = () => {
       console.log("Submitting form:", values);
       try {
         if (isEditing) {
-          // await editSubjectMutate.mutateAsync({
-          //   id: subjectId,
-          //   data: values,
-          // });
+          await handleEditLevel.mutateAsync({
+            level: level,
+            subject_id: id ? parseInt(id, 10) : 0,
+            grade_id: grade ? parseInt(grade, 10) : 0,
+            data: values,
+          });
         } else {
           await mutateAsync(values);
         }
@@ -63,6 +69,7 @@ const Levels = () => {
     },
   });
 
+  // create a new level
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (values: LevelCreateValues) => {
       const finalValues = {
@@ -80,6 +87,7 @@ const Levels = () => {
         data: finalValues,
       });
       console.log("Response from level creation:", response);
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fetch-level-data"] });
@@ -90,6 +98,21 @@ const Levels = () => {
     },
   });
 
+  // fetch level by ID
+  const fetchLevelById = async (levelNum: number) => {
+    try {
+      
+      const response = await AxiosRequest({
+        url: `/level/${levelNum}/${grade}/${id}`,
+        method: "GET",
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching level:", error);
+     
+    }
+  };
+
   const handlePopupOpen = () => {
     setIsEditing(false);
     formik.resetForm();
@@ -98,21 +121,24 @@ const Levels = () => {
 
   const handlePopupClose = () => {
     setHandleOpen(false);
+    setIsEditing(false);
+    setFetchError(null);
+    formik.resetForm();
   };
 
-  //get all levels
+  // get all levels
   const { data: levelsData = [], isFetching } = useQuery({
-    queryKey: ["fetch-level-data"],
+    queryKey: ["fetch-level-data", id, grade],
     queryFn: async () => {
       const response = await AxiosRequest({
-        url: `/level`,
+        url: `/level?grade_id=${grade}&subject_id=${id}`,
         method: "GET",
       });
       return response.data;
     },
   });
 
-  // delete subject
+  // delete level
   const deleteMutation = useMutation({
     mutationFn: async ({
       grade_id,
@@ -132,21 +158,23 @@ const Levels = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fetch-level-data"] });
       setHandleDeleteOpen(false);
-      
     },
-    onError: (error: string) => {
-      console.error("Error deleting subject:", error);
+    onError: (error) => {
+      console.error("Error deleting level:", error);
     },
   });
 
   const handleDelete = async (level: number) => {
-  
-      await deleteMutation.mutateAsync({
-        grade_id: parseInt(grade as string),
-        subject_id: parseInt(id as string),
-        level,
-      });
-   
+    if (!grade || !id) {
+      console.error("Missing grade or subject ID");
+      return;
+    }
+    
+    await deleteMutation.mutateAsync({
+      grade_id: parseInt(grade as string),
+      subject_id: parseInt(id as string),
+      level,
+    });
   };
 
   const isPendingDelete = deleteMutation.isPending;
@@ -154,12 +182,82 @@ const Levels = () => {
   const openDeletePopup = (level: number) => {
     setHandleDeleteOpen(true);
     setLevel(level);
+  };
+
+  // edit level
+  const handleEditLevel = useMutation({
+    mutationFn: async ({
+      grade_id,
+      subject_id,
+      level,
+      data
+    }: {
+      level: number;
+      subject_id: number;
+      grade_id: number;
+      data: LevelCreateValues;
+    }) => {
+      const response = await AxiosRequest({
+        url: `/level/${level}/${grade_id}/${subject_id}`,
+        method: "PATCH",
+        data: data,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["fetch-level-data"] });
+      setHandleOpen(false);
+    },
+    onError: (error: unknown) => {
+      console.error("Error editing level:", error);
+    },
+  });
+
+  const handleEditPopup = async (levelNum: number) => {
+    try {
+      setLevel(levelNum);
+      setIsEditing(true);
+      setFetchError(null);
+      
+    
+      const levelData = await fetchLevelById(levelNum);
+      
+      if (levelData) {
+        // update form values with existing data
+        formik.setValues({
+          level: levelData.level,
+          subject_id: id ? parseInt(id, 10) : 0,
+          grade_id: grade ? parseInt(grade, 10) : 0,
+          unlock_points: levelData.unlock_points,
+          passing_marks: levelData.passing_marks,
+          time_limit: levelData.time_limit,
+        });
+        
+        setHandleOpen(true);
+      } else {
+        console.error("Failed to fetch level data");
+      }
+    } catch (error) {
+      console.error("Error setting up edit form:", error);
+    }
+  };
+ 
+  const isEditPending = handleEditLevel.isPending;
+
+  //navigate to Q&A screen
+  const handleNavigate = (level_id: number,event: React.MouseEvent) => {
+
+    if (!(event.target as Element).closest(".subject-icon-wrapper")) {
+      navigate(`/subject/${id}/${grade}/${level_id}`);
+    }
     
   };
 
+  
+
   return (
     <div id="screen_container">
-      {(isPending || isFetching || isPendingDelete) && <Loading />}
+      {(isPending || isFetching || isPendingDelete || isEditPending) && <Loading />}
       <ScreenHeader
         title="Levels"
         onBack={() => navigate(-1)}
@@ -175,9 +273,10 @@ const Levels = () => {
         isOpen={handleOpen}
         handleClose={handlePopupClose}
         onClick={formik.handleSubmit}
-        title="Add Level"
+        title={isEditing ? "Edit Level" : "Add Level"}
         content={
           <>
+            {fetchError && <div className="error-message">{fetchError}</div>}
             <TextInput
               name="level"
               label="Level"
@@ -186,6 +285,8 @@ const Levels = () => {
               error={formik.errors.level}
               touched={formik.touched.level}
               type="number"
+              disabled={isEditing} // Disable input if editing
+             
             />
             <TextInput
               name="unlock_points"
@@ -199,7 +300,7 @@ const Levels = () => {
 
             <TextInput
               name="passing_marks"
-              label="Parssing Marks"
+              label="Passing Marks" // Fixed typo: "Parssing" -> "Passing"
               value={formik.values.passing_marks}
               onChange={formik.handleChange}
               error={formik.errors.passing_marks}
@@ -218,24 +319,27 @@ const Levels = () => {
           </>
         }
       />
-       <Alart
-          title="Are you sure to delete?"
-          open={handleDeleteOpen}
-          handleClose={() => setHandleDeleteOpen(false)}
-          handleConfirm={()=>handleDelete(level)}
-        />
+      <Alart
+        title="Are you sure to delete?"
+        open={handleDeleteOpen}
+        handleClose={() => setHandleDeleteOpen(false)}
+        handleConfirm={() => handleDelete(level)}
+      />
       <div className="level-container">
         {levelsData.map((level, index: number) => (
           <div className="card" key={index}>
             <Card
-            
               title={`Level ${level?.level}`}
               onDelete={() => {
-                openDeletePopup(level?.level);
+          openDeletePopup(level?.level);
               }}
               passingMarks={level?.passing_marks}
               unlockPoints={level?.unlock_points}
-              timeLimit={level?.time_limit}  
+              timeLimit={level?.time_limit}
+              onEdit={() => {
+          handleEditPopup(level?.level);
+              }}
+              onClick={(event: React.MouseEvent) => handleNavigate(level?.level_id, event)}
             />
           </div>
         ))}

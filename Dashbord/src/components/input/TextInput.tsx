@@ -9,9 +9,10 @@ interface TextInputProps {
     error?: boolean | string;
     name?: string;
     type?: string;
+    disabled?: boolean;
 }
 
-const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,error,type}) => {
+const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,error,type,disabled}) => {
 
     return (
         <div id="text-input">
@@ -24,6 +25,7 @@ const TextInput:React.FC<TextInputProps> = ({name,value,onChange,label,touched,e
         onChange={onChange}
         variant="outlined"
         type={type}
+        disabled={disabled}
       />
         {touched && error && (
             <div className="error-message">{error}</div>

@@ -179,6 +179,7 @@ const Subjects = () => {
     }
   };
 
+
   const handlePopupClose = () => {
     setHandleOpen(false);
     setIsEditing(false);
@@ -204,11 +205,12 @@ const Subjects = () => {
   const isEditPending = editSubjectMutate.isPending;
 
   const navigateToSubject = (id: number, event: React.MouseEvent) => {
-    // Only navigate if the click was on the card itself, not on the action buttons
+    // only navigate if the click was on the card itself, not on the action buttons
     if (!(event.target as Element).closest(".subject-icon-wrapper")) {
       navigate(`/subject/${id}`);
     }
   };
+
 
   return (
     <div id="subjects_container">

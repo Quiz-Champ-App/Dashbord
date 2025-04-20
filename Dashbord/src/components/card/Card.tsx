@@ -17,7 +17,7 @@ interface CardProps {
   title: string;
   color?: string;
   index?: number;
-  onClick?: () => void;
+  onClick?: (event: React.MouseEvent<Element,MouseEvent>) => void;
   onEdit?: () => void;
   onDelete?: () => void;
   unlockPoints?: number;

@@ -20,7 +20,7 @@ const useAxios = () => {
 
   interface AxiosTypes {
     url: string;
-    method: "GET" | "POST" | "PUT" | "DELETE";
+    method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
     data?: Record<string, unknown>;
     headers?: Record<string, string>;
   }
