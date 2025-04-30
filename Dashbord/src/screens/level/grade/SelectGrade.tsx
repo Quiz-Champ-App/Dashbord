@@ -16,7 +16,7 @@ const SelectGrade = () => {
                
             </div>
         </div>
-        <div className='grade-card'>
+        <div className='grade-card' onClick={() => navigate(`/subject/${id}/11`)}>
 
         <div className='grade-card-content'>
                 <h1>Grade 11</h1>

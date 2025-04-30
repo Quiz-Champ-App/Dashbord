@@ -12,6 +12,7 @@ import { useState } from "react";
 import Popup from "../../../components/popup/Popup";
 import TextInput from "../../../components/input/TextInput";
 import SecondaryBtn from "../../../components/buttons/SecondaryBtn";
+import Alart from "../../../components/alart/Alart";
 
 interface QuizCreateValues {
   level_id: number;
@@ -30,6 +31,7 @@ const QuizAndAnswers = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [handleOpen, setHandleOpen] = useState<boolean>(false);
   const [handleDeleteOpen, setHandleDeleteOpen] = useState<boolean>(false);
+  const [question_id, setQuestion_id] = useState<number>(0);
   const queryClient = useQueryClient();
   const { AxiosRequest } = useAxios();
 
@@ -50,12 +52,12 @@ const QuizAndAnswers = () => {
       onSubmit: async (values: QuizCreateValues) => {
         try {
           if (isEditing) {
-            //   await editSubjectMutate.mutateAsync({
-            //     id: subjectId,
-            //     data: values,
-            //   });
+            await editQuizMutation.mutateAsync({
+              id: question_id,
+              data: values,
+            });
           } else {
-            await mutateAsync(values);
+            await createQuizMutation.mutateAsync(values);
             console.log("Form submitted successfully:", values);
             resetForm();
             setIsEditing(false);
@@ -67,7 +69,7 @@ const QuizAndAnswers = () => {
     });
 
   //create quiz
-  const { mutateAsync, isPending } = useMutation({
+  const createQuizMutation = useMutation({
     mutationFn: async (values: QuizCreateValues) => {
       const finalVal = {
         level_id: values.level_id,
@@ -88,7 +90,7 @@ const QuizAndAnswers = () => {
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["quiz-data"] });
+      queryClient.invalidateQueries({ queryKey: ["quiz-data", level_id] });
       handlePopupClose();
     },
     onError: (error) => {
@@ -96,8 +98,35 @@ const QuizAndAnswers = () => {
     },
   });
 
-  const { data: quizData = [], isFetching } = useQuery({
+  // edit quiz
+  const editQuizMutation = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: QuizCreateValues;
+    }) => {
+      const response = await AxiosRequest({
+        method: "PATCH",
+        url: `question/${id}`,
+        data: data,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quiz-data", level_id] });
+      handlePopupClose();
+    },
+    onError: (error) => {
+      console.error("Error editing quiz:", error);
+    },
+  });
+
+  //get all quiz data
+  const { data: quizData = [], isFetching, isError } = useQuery({
     queryKey: ["quiz-data", level_id],
+    enabled: !!level_id,
     queryFn: async () => {
       const response = await AxiosRequest({
         method: "GET",
@@ -105,12 +134,46 @@ const QuizAndAnswers = () => {
       });
       return response.data;
     },
-
-    enabled: !!level_id,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
   });
+
+  //get quiz by id
+  const fetchQuizById = async (id: number) => {
+    const response = await AxiosRequest({
+      url: `/question/${id}`,
+      method: "GET",
+    });
+    return response.data;
+  };
+
+  //delete quiz
+  const deleteQuizMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await AxiosRequest({
+        method: "DELETE",
+        url: `question/${id}`,
+      });
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["quiz-data", level_id] });
+      setHandleDeleteOpen(false);
+    },
+    onError: (error) => {
+      console.error("Error deleting quiz:", error);
+    },
+  });
+
+  const handleDeleteQuiz = () => {
+    deleteQuizMutation.mutateAsync(question_id);
+    setHandleDeleteOpen(false);
+  };
 
   const handlePopupOpen = () => {
     setHandleOpen(true);
+    setIsEditing(false);
+    resetForm();
   };
 
   const handlePopupClose = () => {
@@ -119,11 +182,47 @@ const QuizAndAnswers = () => {
     resetForm();
   };
 
+  const handleDeletePopupOpen = (q_id: number) => {
+    setHandleDeleteOpen(true);
+    setQuestion_id(q_id);
+  };
+
+  const handleEditOpen = async (id: number) => {
+    setIsEditing(true);
+    setQuestion_id(id);
+
+    try {
+      const quizData = await fetchQuizById(id);
+
+      resetForm({
+        values: {
+          level_id: quizData.level_id,
+          question_text_si: quizData.question_text_si,
+          question_text_en: quizData.question_text_en,
+          answers: quizData.answers.map((answer) => ({
+            answer_text_en: answer.answer_text_en,
+            answer_text_si: answer.answer_text_si,
+            is_correct: answer.is_correct,
+          })),
+        },
+      });
+      setHandleOpen(true);
+    } catch (error) {
+      console.error("Error fetching quiz for edit:", error);
+    }
+  };
+
+  // Determine if any operation is pending
+  const isLoading = 
+    isFetching || 
+    createQuizMutation.isPending || 
+    editQuizMutation.isPending || 
+    deleteQuizMutation.isPending;
+
   return (
     <div id="screen_container">
-          {(isPending || isFetching) && (
-                <Loading />
-              )}
+      {isLoading && <Loading />}
+      
       <ScreenHeader
         onBack={() => navigate(-1)}
         title="Quiz and Answers"
@@ -132,12 +231,11 @@ const QuizAndAnswers = () => {
             onClick={handlePopupOpen}
             color="primary"
             variant="contained"
-            
           />
         }
       />
       <Popup
-        title="Create Quiz"
+        title={isEditing ? "Edit Quiz" : "Create Quiz"}
         isOpen={handleOpen}
         onClick={handleSubmit}
         handleClose={handlePopupClose}
@@ -207,20 +305,34 @@ const QuizAndAnswers = () => {
           </>
         }
       />
+      <Alart
+        title="Are you sure to delete?"
+        open={handleDeleteOpen}
+        handleClose={() => setHandleDeleteOpen(false)}
+        handleConfirm={handleDeleteQuiz}
+      />
 
       <div className="quiz-container">
-     
-
-        {quizData.map((quiz) => (
-          <QuizCard
-            key={quiz.id}
-            question={quiz.question_text_si}
-            options={quiz.answers.map((answer) => answer.answer_text_si)}
-            correctAnswer={
-              quiz.answers.find((answer) => answer.is_correct)?.answer_text_si
-            }
-          />
-        ))}
+        {isError ? (
+          <div className="error-message">Failed to load quiz data.</div>
+        ) : quizData.length === 0 && !isFetching ? (
+          <div className="no-data">No quiz questions available.</div>
+        ) : (
+          quizData && quizData?.map((quiz) => (
+            <QuizCard
+              key={quiz?.question_id}
+              question={quiz?.question_text_si}
+              options={quiz?.answers.map((answer) => answer.answer_text_si)}
+              correctAnswer={
+                quiz?.answers.find((answer) => answer.is_correct)?.answer_text_si
+              }
+              onDelete={() => {
+                handleDeletePopupOpen(quiz?.question_id);
+              }}
+              onEdit={() => handleEditOpen(quiz?.question_id)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

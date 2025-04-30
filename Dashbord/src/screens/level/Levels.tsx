@@ -23,14 +23,12 @@ interface LevelCreateValues {
   time_limit: number;
 }
 
-
-
 const Levels = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { grade } = useParams();
   const { AxiosRequest } = useAxios();
- 
+
   const queryClient = useQueryClient();
   const [handleOpen, setHandleOpen] = useState<boolean>(false);
   const [handleDeleteOpen, setHandleDeleteOpen] = useState<boolean>(false);
@@ -52,9 +50,8 @@ const Levels = () => {
       try {
         if (isEditing) {
           await handleEditLevel.mutateAsync({
-            level: level,
-            subject_id: id ? parseInt(id, 10) : 0,
-            grade_id: grade ? parseInt(grade, 10) : 0,
+            level_id: level,
+            
             data: values,
           });
         } else {
@@ -99,17 +96,15 @@ const Levels = () => {
   });
 
   // fetch level by ID
-  const fetchLevelById = async (levelNum: number) => {
+  const fetchLevelById = async (level_id: number) => {
     try {
-      
       const response = await AxiosRequest({
-        url: `/level/${levelNum}/${grade}/${id}`,
+        url: `/level/${level_id}`,
         method: "GET",
       });
       return response.data;
     } catch (error) {
       console.error("Error fetching level:", error);
-     
     }
   };
 
@@ -131,7 +126,7 @@ const Levels = () => {
     queryKey: ["fetch-level-data", id, grade],
     queryFn: async () => {
       const response = await AxiosRequest({
-        url: `/level?grade_id=${grade}&subject_id=${id}`,
+        url: `/level/grade/${grade}/subject/${id}`,
         method: "GET",
       });
       return response.data;
@@ -140,17 +135,9 @@ const Levels = () => {
 
   // delete level
   const deleteMutation = useMutation({
-    mutationFn: async ({
-      grade_id,
-      subject_id,
-      level,
-    }: {
-      grade_id: number;
-      subject_id: number;
-      level: number;
-    }) => {
+    mutationFn: async ({ level_id }: { level_id: number }) => {
       const response = await AxiosRequest({
-        url: `/level/${level}/${grade_id}/${subject_id}`,
+        url: `/level/${level_id}`,
         method: "DELETE",
       });
       return response.data;
@@ -164,16 +151,10 @@ const Levels = () => {
     },
   });
 
-  const handleDelete = async (level: number) => {
-    if (!grade || !id) {
-      console.error("Missing grade or subject ID");
-      return;
-    }
-    
+  const handleDelete = async (level_id: number) => {
+   
     await deleteMutation.mutateAsync({
-      grade_id: parseInt(grade as string),
-      subject_id: parseInt(id as string),
-      level,
+      level_id,
     });
   };
 
@@ -187,18 +168,16 @@ const Levels = () => {
   // edit level
   const handleEditLevel = useMutation({
     mutationFn: async ({
-      grade_id,
-      subject_id,
-      level,
-      data
+     
+      level_id,
+      data,
     }: {
-      level: number;
-      subject_id: number;
-      grade_id: number;
+      level_id: number;
+    
       data: LevelCreateValues;
     }) => {
       const response = await AxiosRequest({
-        url: `/level/${level}/${grade_id}/${subject_id}`,
+        url: `/level/${level_id}`,
         method: "PATCH",
         data: data,
       });
@@ -218,10 +197,9 @@ const Levels = () => {
       setLevel(levelNum);
       setIsEditing(true);
       setFetchError(null);
-      
-    
+
       const levelData = await fetchLevelById(levelNum);
-      
+
       if (levelData) {
         // update form values with existing data
         formik.setValues({
@@ -232,7 +210,7 @@ const Levels = () => {
           passing_marks: levelData.passing_marks,
           time_limit: levelData.time_limit,
         });
-        
+
         setHandleOpen(true);
       } else {
         console.error("Failed to fetch level data");
@@ -241,23 +219,21 @@ const Levels = () => {
       console.error("Error setting up edit form:", error);
     }
   };
- 
+
   const isEditPending = handleEditLevel.isPending;
 
   //navigate to Q&A screen
-  const handleNavigate = (level_id: number,event: React.MouseEvent) => {
-
+  const handleNavigate = (level_id: number, event: React.MouseEvent) => {
     if (!(event.target as Element).closest(".subject-icon-wrapper")) {
       navigate(`/subject/${id}/${grade}/${level_id}`);
     }
-    
   };
-
-  
 
   return (
     <div id="screen_container">
-      {(isPending || isFetching || isPendingDelete || isEditPending) && <Loading />}
+      {(isPending || isFetching || isPendingDelete || isEditPending) && (
+        <Loading />
+      )}
       <ScreenHeader
         title="Levels"
         onBack={() => navigate(-1)}
@@ -286,7 +262,6 @@ const Levels = () => {
               touched={formik.touched.level}
               type="number"
               disabled={isEditing} // Disable input if editing
-             
             />
             <TextInput
               name="unlock_points"
@@ -331,15 +306,17 @@ const Levels = () => {
             <Card
               title={`Level ${level?.level}`}
               onDelete={() => {
-          openDeletePopup(level?.level);
+                openDeletePopup(level?.level_id);
               }}
               passingMarks={level?.passing_marks}
               unlockPoints={level?.unlock_points}
               timeLimit={level?.time_limit}
               onEdit={() => {
-          handleEditPopup(level?.level);
+                handleEditPopup(level?.level_id);
               }}
-              onClick={(event: React.MouseEvent) => handleNavigate(level?.level_id, event)}
+              onClick={(event: React.MouseEvent) =>
+                handleNavigate(level?.level_id, event)
+              }
             />
           </div>
         ))}
